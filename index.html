@@ -1,1 +1,67 @@
-Hello
+<!DOCTYPE html>
+<html>
+<head>
+  <title>ISBN Book Cover Scanner</title>
+  <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
+  <style>
+    #scanner {
+      width: 100%;
+      height: 400px;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div id="scanner"></div>
+  <input type="text" id="isbnInput" placeholder="Enter ISBN manually if needed" />
+  <button id="searchBtn">Search</button>
+  <div id="bookCover"></div>
+
+  <script>
+    // Initialize QuaggaJS
+    Quagga.init({
+      inputStream: {
+        name: "Live",
+        type: "LiveStream",
+        target: document.querySelector('#scanner')
+      },
+      decoder: {
+        readers: ["ean_reader"] // EAN-13 is the standard for ISBN-13
+      }
+    }, function(err) {
+      if (err) {
+        console.log(err);
+        return;
+      }
+      Quagga.start();
+    });
+
+    // Process the scanned barcode
+    Quagga.onDetected(function(result) {
+      const isbn = result.codeResult.code;
+      document.getElementById('isbnInput').value = isbn;
+      fetchBookCover(isbn);
+    });
+
+    document.getElementById('searchBtn').addEventListener('click', function() {
+      const isbn = document.getElementById('isbnInput').value;
+      fetchBookCover(isbn);
+    });
+
+    function fetchBookCover(isbn) {
+      fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}`)
+        .then(response => response.json())
+        .then(data => {
+          if (data.totalItems > 0) {
+            const book = data.items[0];
+            const coverImage = book.volumeInfo.imageLinks.thumbnail;
+            document.getElementById('bookCover').innerHTML = `<img src="${coverImage}" alt="Book Cover">`;
+          } else {
+            document.getElementById('bookCover').innerHTML = 'No cover found.';
+          }
+        })
+        .catch(error => console.error('Error fetching book details:', error));
+    }
+  </script>
+</body>
+</html>
